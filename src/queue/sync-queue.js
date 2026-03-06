@@ -48,6 +48,15 @@ function cleanError(err) {
   return msg.length > 200 ? msg.substring(0, 200) + '...' : msg;
 }
 
+const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
+const MAX_RETRIES = 2;
+
+function isRetryableError(err) {
+  const msg = err.message || '';
+  return msg.includes('Timeout') || msg.includes('net::') ||
+    msg.includes('ECONNREFUSED') || msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT');
+}
+
 // Simple serial queue — one browser at a time
 const queue = [];
 let running = false;
@@ -55,12 +64,12 @@ let running = false;
 // Track in-progress syncs by userId
 const activeUsers = new Set();
 
-function enqueueSync(userId, triggerType = 'manual') {
+function enqueueSync(userId, triggerType = 'manual', retryCount = 0) {
   if (activeUsers.has(userId)) {
     console.log(`Sync already in progress for user ${userId}, skipping.`);
     return false;
   }
-  queue.push({ userId, triggerType });
+  queue.push({ userId, triggerType, retryCount });
   processQueue();
   return true;
 }
@@ -69,12 +78,13 @@ async function processQueue() {
   if (running || queue.length === 0) return;
   running = true;
 
-  const { userId, triggerType } = queue.shift();
+  const { userId, triggerType, retryCount = 0 } = queue.shift();
   activeUsers.add(userId);
 
   let browser;
+  let scheduleRetry = false;
   try {
-    console.log(`[${new Date().toISOString()}] Starting sync for user ${userId}...`);
+    console.log(`[${new Date().toISOString()}] Starting sync for user ${userId}${retryCount > 0 ? ` (retry ${retryCount}/${MAX_RETRIES})` : ''}...`);
 
     // 1. Decrypt Psychometrix credentials
     const creds = getPsychometrixCredentials(userId);
@@ -145,15 +155,23 @@ async function processQueue() {
     notifySyncResult('success', stats);
     await trySendNotification(userId, 'success', { stats, triggerType });
   } catch (err) {
-    console.error(`[${new Date().toISOString()}] Sync failed for user ${userId}:`, err.message);
-    const cleanedError = cleanError(err);
-    createSyncLog(userId, 'error', null, triggerType, cleanedError);
-    notifySyncResult('error', null, cleanedError);
-    await trySendNotification(userId, 'error', { error: cleanedError, triggerType });
+    if (retryCount < MAX_RETRIES && isRetryableError(err)) {
+      console.warn(`[${new Date().toISOString()}] Sync failed for user ${userId} (attempt ${retryCount + 1}/${MAX_RETRIES + 1}), retrying in 5 min: ${err.message.split('\n')[0]}`);
+      scheduleRetry = true;
+    } else {
+      console.error(`[${new Date().toISOString()}] Sync failed for user ${userId}:`, err.message);
+      const cleanedError = cleanError(err);
+      createSyncLog(userId, 'error', null, triggerType, cleanedError);
+      notifySyncResult('error', null, cleanedError);
+      await trySendNotification(userId, 'error', { error: cleanedError, triggerType });
+    }
   } finally {
     if (browser) await browser.close();
     activeUsers.delete(userId);
     running = false;
+    if (scheduleRetry) {
+      setTimeout(() => enqueueSync(userId, triggerType, retryCount + 1), RETRY_DELAY_MS);
+    }
     processQueue(); // Process next item
   }
 }
