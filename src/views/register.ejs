@@ -1,0 +1,28 @@
+<%- include('layout') %>
+
+<div class="auth-container">
+  <h1>X Campus Calendar Sync</h1>
+  <p class="auth-desc">סנכרון אוטומטי של המערכת שלך מ-X Campus ליומן גוגל.</p>
+  <h2>יצירת חשבון</h2>
+  <p class="auth-note">צור חשבון באפליקציה. את פרטי X Campus תזין בשלב הבא.</p>
+  <form method="POST" action="/register">
+    <label>שם
+      <input type="text" name="displayName" placeholder="השם שלך (לא חובה)">
+    </label>
+    <label>אימייל
+      <input type="email" name="email" required autofocus placeholder="your@email.com">
+    </label>
+    <label>בחר סיסמה
+      <input type="password" name="password" required minlength="6" placeholder="לפחות 6 תווים">
+    </label>
+    <% if (inviteRequired) { %>
+    <label>קוד הזמנה
+      <input type="text" name="inviteCode" required placeholder="בקש קוד מחבר">
+    </label>
+    <% } %>
+    <button type="submit">הרשמה</button>
+  </form>
+  <p class="auth-link">כבר יש לך חשבון? <a href="/login">התחברות</a></p>
+</div>
+
+<%- include('footer') %>

@@ -1,0 +1,23 @@
+  </main>
+  <script>
+    function toggleTheme() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const next = isDark ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      syncDarkCheckbox(next === 'dark');
+    }
+
+    function syncDarkCheckbox(isDark) {
+      const cb = document.getElementById('darkModeCheckbox');
+      if (cb) cb.checked = isDark;
+    }
+
+    // Sync checkbox state on page load
+    (function() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      syncDarkCheckbox(isDark);
+    })();
+  </script>
+</body>
+</html>

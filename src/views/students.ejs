@@ -1,0 +1,97 @@
+<%- include('layout') %>
+
+<div class="container">
+  <h1>תלמידים (<%= students.length %>)</h1>
+
+  <% if (moeds.length > 1) { %>
+    <div class="moed-selector">
+      <% for (const m of moeds) { %>
+        <a href="/students?moed=<%= encodeURIComponent(m.moed) %>"
+           class="moed-pill <%= m.moed === selectedMoed ? 'moed-pill-active' : '' %>">
+          <%= m.moed %>
+        </a>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (students.length === 0) { %>
+    <div class="card">
+      <p class="empty-state">אין תלמידים — בצע סנכרון כדי לטעון את רשימת התלמידים.</p>
+    </div>
+  <% } else { %>
+    <section class="card">
+      <div class="students-search-bar">
+        <input type="text" id="student-search" placeholder="חיפוש תלמיד..." oninput="filterStudents(this.value)">
+      </div>
+      <table id="students-table">
+        <thead>
+          <tr>
+            <th>שם</th>
+            <th>טלפון</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% for (const student of students) { %>
+          <tr class="student-row">
+            <td class="student-name"><%= student.name %></td>
+            <td class="student-phone"><%= student.phone ? '0' + student.phone.slice(3) : '—' %></td>
+            <td class="student-actions">
+              <% if (student.phone) { %>
+                <a class="btn btn-whatsapp btn-small"
+                   href="whatsapp://send?phone=<%= student.phone %>"
+                   target="_blank" rel="noopener">WhatsApp</a>
+              <% } %>
+            </td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+      <p id="no-results" class="empty-state" style="display:none;">לא נמצאו תלמידים</p>
+    </section>
+  <% } %>
+</div>
+
+<script>
+// Remember last viewed מועד
+(function() {
+  const availableMoeds = <%- JSON.stringify(moeds.map(m => m.moed)) %>;
+  const hasMoedParam = new URLSearchParams(window.location.search).has('moed');
+
+  if (!hasMoedParam && availableMoeds.length > 1) {
+    const saved = localStorage.getItem('students_moed');
+    if (saved && availableMoeds.includes(saved)) {
+      window.location.replace('/students?moed=' + encodeURIComponent(saved));
+      return;
+    }
+  }
+
+  // Save current moed to localStorage
+  const currentMoed = new URLSearchParams(window.location.search).get('moed') || availableMoeds[0];
+  if (currentMoed) localStorage.setItem('students_moed', currentMoed);
+
+  // Save on pill click too
+  document.querySelectorAll('.moed-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const m = new URL(pill.href).searchParams.get('moed');
+      if (m) localStorage.setItem('students_moed', m);
+    });
+  });
+})();
+
+function filterStudents(query) {
+  const q = query.trim().toLowerCase();
+  const rows = document.querySelectorAll('.student-row');
+  let visible = 0;
+  for (const row of rows) {
+    const name = row.querySelector('.student-name').textContent.toLowerCase();
+    const phone = row.querySelector('.student-phone').textContent;
+    const match = name.includes(q) || phone.includes(q);
+    row.style.display = match ? '' : 'none';
+    if (match) visible++;
+  }
+  document.getElementById('no-results').style.display = visible === 0 ? '' : 'none';
+}
+</script>
+
+<%- include('footer') %>

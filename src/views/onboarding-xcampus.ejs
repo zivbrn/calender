@@ -1,0 +1,28 @@
+<%- include('layout') %>
+
+<div class="auth-container">
+  <div class="onboarding-steps">
+    <span class="step done">1</span>
+    <span class="step-line"></span>
+    <span class="step active">2</span>
+    <span class="step-line"></span>
+    <span class="step">3</span>
+  </div>
+
+  <h2>חיבור X Campus</h2>
+  <p class="auth-note">הזן את פרטי הכניסה שלך ל-X Campus כדי שנוכל לסנכרן את המערכת שלך.</p>
+
+  <form method="POST" action="/onboarding/xcampus">
+    <label>אימייל X Campus
+      <input type="text" name="username" autofocus placeholder="your@email.com">
+    </label>
+    <label>סיסמה
+      <input type="password" name="password" placeholder="הסיסמה שלך">
+    </label>
+    <button type="submit">המשך</button>
+  </form>
+
+  <a href="/onboarding/google" class="auth-link" style="display:block;text-align:center;margin-top:1rem;">דלג על שלב זה</a>
+</div>
+
+<%- include('footer') %>

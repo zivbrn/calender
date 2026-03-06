@@ -1,0 +1,30 @@
+{
+  "name": "calendar-sync",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test-scrape": "node scripts/test-scrape.js",
+    "google-auth": "node scripts/google-auth-setup.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "better-sqlite3": "^12.6.2",
+    "better-sqlite3-session-store": "^0.1.0",
+    "dotenv": "^17.3.1",
+    "ejs": "^4.0.1",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "googleapis": "^171.4.0",
+    "node-cron": "^4.2.1",
+    "node-notifier": "^10.0.1",
+    "nodemailer": "^8.0.1",
+    "open": "^11.0.0",
+    "playwright": "^1.58.2"
+  }
+}

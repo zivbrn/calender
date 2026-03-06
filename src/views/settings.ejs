@@ -1,0 +1,210 @@
+<%- include('layout') %>
+
+<div class="container">
+  <h1>הגדרות</h1>
+
+  <section class="card">
+    <h2>תצוגה</h2>
+    <div class="ios-toggle-row">
+      <span>מצב כהה</span>
+      <label class="ios-toggle">
+        <input type="checkbox" id="darkModeCheckbox" onchange="toggleTheme()">
+        <span class="ios-toggle-track"></span>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>פרטי התחברות ל-X Campus</h2>
+    <p class="auth-note">הכנס את האימייל והסיסמה שבהם אתה משתמש באתר <strong>x.psychometrix.co.il</strong>. הפרטים מאוחסנים בצורה מוצפנת ומשמשים לשליפת המערכת שלך.</p>
+    <% if (hasPsychometrix) { %>
+      <p class="status status-ok">הפרטים נשמרו בהצלחה</p>
+    <% } %>
+    <form method="POST" action="/settings/psychometrix">
+      <label>אימייל X Campus
+        <input type="text" name="username" required placeholder="your@email.com">
+      </label>
+      <label>סיסמה X Campus
+        <input type="password" name="password" required placeholder="הסיסמה שלך ב-X Campus">
+      </label>
+      <button type="submit"><%= hasPsychometrix ? 'עדכון' : 'שמירת' %> פרטים</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>יומן גוגל</h2>
+    <p class="auth-note">חבר את חשבון הגוגל שלך כדי שנוכל להוסיף את המערכת ליומן שלך.</p>
+    <% if (hasGoogle) { %>
+      <p class="status status-ok">יומן גוגל מחובר</p>
+      <a href="/auth/google/connect" class="btn btn-secondary">חיבור מחדש</a>
+    <% } else { %>
+      <p class="status status-warn">לא מחובר</p>
+      <a href="/auth/google/connect" class="btn">חיבור יומן גוגל</a>
+    <% } %>
+  </section>
+
+  <section class="card">
+    <h2>תדירות סנכרון אוטומטי</h2>
+    <p class="auth-note">בחר כל כמה זמן המערכת תסונכרן אוטומטית ליומן גוגל.</p>
+    <form method="POST" action="/settings/schedule">
+      <div class="radio-group">
+        <label class="radio-label">
+          <input type="radio" name="schedule" value="every6h" <%= syncSchedule === 'every6h' ? 'checked' : '' %>>
+          כל 6 שעות
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="schedule" value="every12h" <%= syncSchedule === 'every12h' ? 'checked' : '' %>>
+          כל 12 שעות
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="schedule" value="daily" <%= syncSchedule === 'daily' ? 'checked' : '' %>>
+          פעם ביום (6 בבוקר)
+        </label>
+      </div>
+      <button type="submit">שמירה</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>ייבוא רשימת תלמידים</h2>
+    <p class="auth-note">ייבוא רשימת התלמידים מהמועד הבא באתר X Campus. השתמש בזה לפני שמועד חדש מתחיל כדי שהרשימה תהיה מוכנה.</p>
+
+    <% if (studentMoeds.length > 0) { %>
+      <div style="margin-bottom: 0.85rem;">
+        <p class="auth-note" style="margin-bottom: 0.35rem;">מועדים שיובאו:</p>
+        <% for (const m of studentMoeds) { %>
+          <span class="moed-pill"><%= m.moed %> (<%= m.count %> תלמידים)</span>
+        <% } %>
+      </div>
+    <% } %>
+
+    <button id="import-btn" class="btn" onclick="triggerImport()">ייבוא מועד הבא</button>
+    <p id="import-status" class="auth-note" style="margin-top:0.6rem; display:none;"></p>
+  </section>
+
+  <section class="card">
+    <h2>תבנית הודעת וואטסאפ — היום</h2>
+    <p class="auth-note">ההודעה שתישלח לתלמידים ביום השיעור. משתנים זמינים: <code>{name}</code>, <code>{time}</code>.</p>
+    <form method="POST" action="/settings/whatsapp-template">
+      <label>תבנית הודעה
+        <textarea name="template" rows="4" ><%= whatsappTemplate %></textarea>
+      </label>
+      <button type="submit">שמירה</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>תבנית הודעת וואטסאפ — מחר</h2>
+    <p class="auth-note">ההודעה שתישלח יום לפני השיעור. משתנים זמינים: <code>{name}</code>, <code>{time}</code>.</p>
+    <form method="POST" action="/settings/whatsapp-template-tomorrow">
+      <label>תבנית הודעה
+        <textarea name="template" rows="4" ><%= whatsappTemplateTomorrow %></textarea>
+      </label>
+      <button type="submit">שמירה</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>התראות אימייל</h2>
+    <p class="auth-note">קבל אימייל אחרי כל סנכרון (הצלחה או כישלון). השתמש בסיסמת אפליקציה של Gmail — לא הסיסמה הרגילה שלך.</p>
+
+    <% if (notifSettings.email) { %>
+      <p class="status status-ok">מוגדר: <%= notifSettings.email %></p>
+
+      <form method="POST" action="/settings/notifications/toggle" style="margin-bottom: 1rem;">
+        <% if (notifSettings.enabled) { %>
+          <input type="hidden" name="enabled" value="0">
+          <button type="submit" class="btn btn-secondary">כיבוי התראות</button>
+        <% } else { %>
+          <input type="hidden" name="enabled" value="1">
+          <button type="submit" class="btn">הפעלת התראות</button>
+        <% } %>
+        <span class="auth-note" style="display:inline; margin-right: 0.75rem;">
+          כרגע: <strong><%= notifSettings.enabled ? 'פועל' : 'כבוי' %></strong>
+        </span>
+      </form>
+    <% } %>
+
+    <form method="POST" action="/settings/notifications">
+      <label>חשבון Gmail לשליחה (נדרשת סיסמת אפליקציה)
+        <input type="email" name="email" required placeholder="sender@gmail.com" value="<%= notifSettings.email || '' %>">
+      </label>
+      <label>סיסמת אפליקציה Gmail
+        <input type="password" name="app_password" required placeholder="xxxx xxxx xxxx xxxx">
+      </label>
+      <label>שלח התראות אל
+        <input type="email" name="to_email" placeholder="your@email.com (ריק = שלח לעצמי)" value="<%= notifSettings.toEmail || '' %>">
+      </label>
+      <p class="auth-note" style="margin-top: -0.5rem;">
+        כדי לקבל סיסמת אפליקציה: כנס ל-myaccount.google.com ← אבטחה ← אימות דו-שלבי ← סיסמאות אפליקציה
+      </p>
+      <button type="submit"><%= notifSettings.email ? 'עדכון פרטים' : 'שמירה' %></button>
+    </form>
+  </section>
+
+  <% if (hasPsychometrix || hasGoogle) { %>
+  <section class="card card-danger">
+    <h2>ניתוק</h2>
+    <p class="auth-note">הסרת פרטי X Campus, חיבור יומן גוגל וכל נתוני הסנכרון. החשבון שלך באפליקציה יישאר.</p>
+    <form method="POST" action="/settings/disconnect" onsubmit="return confirm('בטוח? כל הפרטים ונתוני הסנכרון שלך יימחקו.')">
+      <button type="submit" class="btn btn-danger">ניתוק מהשירות</button>
+    </form>
+  </section>
+  <% } %>
+
+  <section class="card card-danger">
+    <h2>מחיקת חשבון</h2>
+    <p class="auth-note">מחיקה לצמיתות של החשבון וכל המידע המשויך אליו.</p>
+    <form method="POST" action="/settings/delete-account" onsubmit="return confirm('בטוח? החשבון שלך וכל המידע יימחקו לצמיתות. אי אפשר לבטל את הפעולה הזו.')">
+      <button type="submit" class="btn btn-danger">מחיקת החשבון שלי</button>
+    </form>
+  </section>
+</div>
+
+<script>
+async function triggerImport() {
+  const btn = document.getElementById('import-btn');
+  const status = document.getElementById('import-status');
+  btn.disabled = true;
+  btn.textContent = 'מייבא...';
+  status.style.display = '';
+  status.textContent = 'מתחבר ל-X Campus ומחפש מועד הבא...';
+
+  try {
+    const res = await fetch('/api/import-next-moed', { method: 'POST' });
+    const data = await res.json();
+    if (!data.ok) {
+      status.textContent = data.message;
+      btn.disabled = false;
+      btn.textContent = 'ייבוא מועד הבא';
+      return;
+    }
+
+    const interval = setInterval(async () => {
+      const sRes = await fetch('/api/import-next-moed/status');
+      const sData = await sRes.json();
+      if (!sData.importing) {
+        clearInterval(interval);
+        btn.disabled = false;
+        btn.textContent = 'ייבוא מועד הבא';
+        const r = sData.result;
+        if (!r) return;
+        if (r.status === 'done') {
+          status.textContent = `יובאו ${r.count} תלמידים ממועד "${r.moedLabel}" בהצלחה.`;
+          setTimeout(() => location.reload(), 1500);
+        } else if (r.status === 'not_found') {
+          status.textContent = 'לא נמצא מועד הבא זמין. נסה שוב כשיפתח מועד חדש.';
+        } else {
+          status.textContent = 'שגיאה: ' + (r.error || 'לא ידוע');
+        }
+      }
+    }, 3000);
+  } catch (err) {
+    status.textContent = 'שגיאה: ' + err.message;
+    btn.disabled = false;
+    btn.textContent = 'ייבוא מועד הבא';
+  }
+}
+</script>
+
+<%- include('footer') %>

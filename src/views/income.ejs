@@ -1,0 +1,45 @@
+<%- include('layout') %>
+
+<div class="container">
+  <h1>הכנסות</h1>
+
+  <section class="card card-earnings">
+    <h2>הכנסות חודש <%= earnings.monthName %> <%= earnings.year %></h2>
+    <div class="earnings-total">₪<%= earnings.total.toLocaleString() %></div>
+    <div class="earnings-breakdown">
+      <div class="earnings-row">
+        <span class="earnings-label">הוראה כיתתית</span>
+        <span class="earnings-detail"><%= earnings.groupClassCount %> שיעורים × <%= earnings.groupClassHours %> שעות × ₪80</span>
+        <span class="earnings-amount">₪<%= earnings.teachingEarnings.toLocaleString() %></span>
+      </div>
+      <div class="earnings-row">
+        <span class="earnings-label">הכנה לשיעורים כיתתיים</span>
+        <span class="earnings-detail"><%= earnings.groupClassCount %> שיעורים × ₪8.5</span>
+        <span class="earnings-amount">₪<%= earnings.prepEarnings.toLocaleString() %></span>
+      </div>
+      <div class="earnings-row">
+        <span class="earnings-label">שיעורים פרטיים</span>
+        <span class="earnings-detail"><%= earnings.privateCount %> שיעורים × ₪30</span>
+        <span class="earnings-amount">₪<%= earnings.privateEarnings.toLocaleString() %></span>
+      </div>
+    </div>
+    <div class="earnings-time">
+      <h3>זמן עבודה החודש</h3>
+      <div class="time-row">
+        <span>הוראה כיתתית</span>
+        <span><%= earnings.groupClassHours %> שעות (<%= earnings.groupClassCount %> שיעורים)</span>
+      </div>
+      <div class="time-row">
+        <span>שיעורים פרטיים</span>
+        <span><%= Math.floor(earnings.privateMinutes / 60) ? Math.floor(earnings.privateMinutes / 60) + ' שעות ' : '' %><%= earnings.privateMinutes % 60 ? earnings.privateMinutes % 60 + ' דקות' : '' %> (<%= earnings.privateCount %> שיעורים)</span>
+      </div>
+    </div>
+    <% if (earnings.syncIsStale) { %>
+      <p class="earnings-note status-warn">⚠️ הסנכרון האחרון היה ב-<%= earnings.syncDateStr %> — בצע סנכרון כדי לראות נתוני <%= earnings.monthName %></p>
+    <% } else { %>
+      <p class="earnings-note">שיעורים שהתקיימו עד היום · ₪80/שעה כיתתי · ₪8.5 הכנה · ₪30 לשיעור פרטי</p>
+    <% } %>
+  </section>
+</div>
+
+<%- include('footer') %>

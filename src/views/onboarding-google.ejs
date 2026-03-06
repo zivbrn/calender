@@ -1,0 +1,22 @@
+<%- include('layout') %>
+
+<div class="auth-container">
+  <div class="onboarding-steps">
+    <span class="step done">1</span>
+    <span class="step-line"></span>
+    <span class="step done">2</span>
+    <span class="step-line"></span>
+    <span class="step active">3</span>
+  </div>
+
+  <h2>חיבור Google Calendar</h2>
+  <p class="auth-note">חבר את יומן גוגל שלך כדי שנסנכרן אליו את המערכת.</p>
+
+  <a href="/auth/google/connect" class="btn-primary" style="display:block;text-align:center;padding:0.75rem;border-radius:var(--radius-md);background:var(--primary);color:#fff;text-decoration:none;font-weight:600;margin-bottom:1rem;">
+    חיבור Google Calendar
+  </a>
+
+  <a href="/" class="auth-link" style="display:block;text-align:center;">דלג על שלב זה</a>
+</div>
+
+<%- include('footer') %>

@@ -1,0 +1,264 @@
+<%- include('layout') %>
+
+<div class="container">
+  <h1>ראשי</h1>
+
+  <% if (!isSetup) { %>
+    <div class="card setup-wizard">
+      <h2>בואו נתחיל!</h2>
+      <p class="auth-note">יש להשלים שני שלבים פשוטים כדי להתחיל לסנכרן:</p>
+      <div class="setup-steps">
+        <div class="setup-step <%= hasPsychometrix ? 'step-done' : 'step-active' %>">
+          <div class="step-number"><%= hasPsychometrix ? '&#10003;' : '1' %></div>
+          <div class="step-content">
+            <h3>חיבור X Campus</h3>
+            <% if (hasPsychometrix) { %>
+              <p class="step-status">הפרטים נשמרו</p>
+            <% } else { %>
+              <p>הכנס את פרטי ההתחברות שלך ל-X Campus כדי שנוכל לשלוף את המערכת.</p>
+              <a href="/settings" class="btn btn-small">הזנת פרטים</a>
+            <% } %>
+          </div>
+        </div>
+        <div class="setup-step <%= !hasPsychometrix ? 'step-pending' : (hasGoogle ? 'step-done' : 'step-active') %>">
+          <div class="step-number"><%= hasGoogle ? '&#10003;' : '2' %></div>
+          <div class="step-content">
+            <h3>חיבור יומן גוגל</h3>
+            <% if (hasGoogle) { %>
+              <p class="step-status">יומן גוגל מחובר</p>
+            <% } else if (hasPsychometrix) { %>
+              <p>חבר את חשבון הגוגל שלך כדי שנוסיף את השיעורים ליומן.</p>
+              <a href="/auth/google/connect" class="btn btn-small">חיבור גוגל</a>
+            <% } else { %>
+              <p>חבר את חשבון הגוגל שלך (אחרי שלב 1).</p>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% } else { %>
+
+    <section class="card">
+      <div class="card-header">
+        <h2>סנכרון</h2>
+        <button id="sync-btn" class="btn" onclick="triggerSync()">סנכרון עכשיו</button>
+      </div>
+      <div id="sync-progress" class="sync-progress" style="display:none;">
+        <div class="spinner"></div>
+        <span id="sync-progress-text">מסנכרן את המערכת שלך...</span>
+      </div>
+      <p id="sync-status">
+        <% if (latestSync) { %>
+          סנכרון אחרון: <%= latestSync.created_at %> —
+          <span class="status-<%= latestSync.status %>">
+            <%= latestSync.status === 'success' ? 'הצליח' : 'נכשל' %>
+          </span>
+          <% if (latestSync.status === 'success') { %>
+            (<%= latestSync.inserted %> נוספו, <%= latestSync.updated %> עודכנו, <%= latestSync.deleted %> הוסרו)
+          <% } else if (latestSync.error_message) { %>
+            — <%= latestSync.error_message %>
+          <% } %>
+        <% } else { %>
+          עדיין לא בוצע סנכרון. לחץ על "סנכרון עכשיו" כדי להתחיל.
+        <% } %>
+      </p>
+    </section>
+
+    <section class="card card-today">
+      <h2>שיעורים להיום</h2>
+      <% if (todayLessons.length > 0) { %>
+        <div class="today-lessons">
+          <% for (const lesson of todayLessons) { %>
+            <div class="today-lesson-item">
+              <div class="lesson-info">
+                <span class="lesson-time"><%= lesson.time %></span>
+                <span class="lesson-name"><%= lesson.studentName || lesson.title %></span>
+              </div>
+              <% if (lesson.phone) { %>
+                <a class="btn btn-whatsapp"
+                   href="whatsapp://send?phone=<%= lesson.phone %>&text=<%= encodeURIComponent(template.replace('{name}', lesson.studentName || '').replace('{time}', lesson.time)) %>"
+                   target="_blank" rel="noopener">
+                  WhatsApp
+                </a>
+              <% } else { %>
+                <span class="no-phone">אין טלפון</span>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+      <% } else { %>
+        <p class="empty-state">אין שיעורים להיום</p>
+      <% } %>
+    </section>
+
+    <section class="card card-tomorrow">
+      <h2>שיעורים מחר</h2>
+      <% if (tomorrowLessons.length > 0) { %>
+        <div class="today-lessons">
+          <% for (const lesson of tomorrowLessons) { %>
+            <div class="today-lesson-item">
+              <div class="lesson-info">
+                <span class="lesson-time"><%= lesson.time %></span>
+                <span class="lesson-name"><%= lesson.studentName || lesson.title %></span>
+              </div>
+              <% if (lesson.phone) { %>
+                <a class="btn btn-whatsapp"
+                   href="whatsapp://send?phone=<%= lesson.phone %>&text=<%= encodeURIComponent(templateTomorrow.replace('{name}', lesson.studentName || '').replace('{time}', lesson.time)) %>"
+                   target="_blank" rel="noopener">
+                  WhatsApp
+                </a>
+              <% } else { %>
+                <span class="no-phone">אין טלפון</span>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+      <% } else { %>
+        <p class="empty-state">אין שיעורים פרטיים מחר</p>
+      <% } %>
+    </section>
+
+    <section class="card">
+      <h2>שיעורים השבוע</h2>
+      <% if (upcomingByDay.length > 0) { %>
+        <div class="week-schedule">
+          <% for (const day of upcomingByDay) { %>
+            <div class="week-day">
+              <div class="week-day-header"><%= day.label %></div>
+              <% for (const ev of day.events) { %>
+                <div class="week-event">
+                  <span class="week-event-time"><%= ev.time %>–<%= ev.endTime %></span>
+                  <span class="week-event-title"><%= ev.title %></span>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+      <% } else { %>
+        <p class="empty-state">אין שיעורים מתוכננים לשבוע הקרוב</p>
+      <% } %>
+    </section>
+
+    <section class="card card-earnings">
+      <h2>הכנסות חודש <%= earnings.monthName %> <%= earnings.year %></h2>
+      <div class="earnings-total">₪<%= earnings.total.toLocaleString() %></div>
+      <div class="earnings-breakdown">
+        <div class="earnings-row">
+          <span class="earnings-label">הוראה כיתתית</span>
+          <span class="earnings-detail"><%= earnings.groupClassCount %> שיעורים × <%= earnings.groupClassHours %> שעות × ₪80</span>
+          <span class="earnings-amount">₪<%= earnings.teachingEarnings.toLocaleString() %></span>
+        </div>
+        <div class="earnings-row">
+          <span class="earnings-label">הכנה לשיעורים כיתתיים</span>
+          <span class="earnings-detail"><%= earnings.groupClassCount %> שיעורים × ₪8.5</span>
+          <span class="earnings-amount">₪<%= earnings.prepEarnings.toLocaleString() %></span>
+        </div>
+        <div class="earnings-row">
+          <span class="earnings-label">שיעורים פרטיים</span>
+          <span class="earnings-detail"><%= earnings.privateCount %> שיעורים × ₪30</span>
+          <span class="earnings-amount">₪<%= earnings.privateEarnings.toLocaleString() %></span>
+        </div>
+      </div>
+      <div class="earnings-time">
+        <h3>זמן עבודה החודש</h3>
+        <div class="time-row">
+          <span>הוראה כיתתית</span>
+          <span><%= earnings.groupClassHours %> שעות (<%= earnings.groupClassCount %> שיעורים)</span>
+        </div>
+        <div class="time-row">
+          <span>שיעורים פרטיים</span>
+          <span><%= Math.floor(earnings.privateMinutes / 60) ? Math.floor(earnings.privateMinutes / 60) + ' שעות ' : '' %><%= earnings.privateMinutes % 60 ? earnings.privateMinutes % 60 + ' דקות' : '' %> (<%= earnings.privateCount %> שיעורים)</span>
+        </div>
+      </div>
+      <% if (earnings.syncIsStale) { %>
+        <p class="earnings-note status-warn">⚠️ הסנכרון האחרון היה ב-<%= earnings.syncDateStr %> — בצע סנכרון כדי לראות נתוני <%= earnings.monthName %></p>
+      <% } else { %>
+        <p class="earnings-note">שיעורים שהתקיימו עד היום · ₪80/שעה כיתתי · ₪8.5 הכנה · ₪30 לשיעור פרטי</p>
+      <% } %>
+    </section>
+
+    <% if (recentLogs.length > 0) { %>
+    <section class="card">
+      <h2>היסטוריית סנכרון</h2>
+      <table>
+        <thead>
+          <tr><th>זמן</th><th>סטטוס</th><th>מקור</th><th>פרטים</th></tr>
+        </thead>
+        <tbody>
+          <% for (const log of recentLogs) { %>
+          <tr>
+            <td><%= log.created_at %></td>
+            <td class="status-<%= log.status %>"><%= log.status === 'success' ? 'הצליח' : 'נכשל' %></td>
+            <td><%= log.trigger_type === 'manual' ? 'ידני' : 'אוטומטי' %></td>
+            <td>
+              <% if (log.status === 'success') { %>
+                +<%= log.inserted %> / ~<%= log.updated %> / -<%= log.deleted %> / =<%= log.skipped %>
+              <% } else { %>
+                <%= log.error_message || '' %>
+              <% } %>
+            </td>
+          </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </section>
+    <% } %>
+
+  <% } %>
+</div>
+
+<script>
+async function triggerSync() {
+  const btn = document.getElementById('sync-btn');
+  const status = document.getElementById('sync-status');
+  const progress = document.getElementById('sync-progress');
+  const progressText = document.getElementById('sync-progress-text');
+
+  btn.disabled = true;
+  btn.textContent = 'מסנכרן...';
+  progress.style.display = 'flex';
+  progressText.textContent = 'מתחיל סנכרון...';
+
+  try {
+    const res = await fetch('/api/sync', { method: 'POST' });
+    const data = await res.json();
+
+    if (data.ok) {
+      const steps = [
+        'מתחבר ל-X Campus ושולף את המערכת...',
+        'קורא את השיעורים שלך...',
+        'מעדכן את יומן גוגל...',
+      ];
+      let step = 0;
+      progressText.textContent = steps[0];
+      const stepInterval = setInterval(() => {
+        step = Math.min(step + 1, steps.length - 1);
+        progressText.textContent = steps[step];
+      }, 8000);
+
+      const interval = setInterval(async () => {
+        const sRes = await fetch('/api/sync/status');
+        const sData = await sRes.json();
+        if (!sData.syncing) {
+          clearInterval(interval);
+          clearInterval(stepInterval);
+          progress.style.display = 'none';
+          location.reload();
+        }
+      }, 3000);
+    } else {
+      progress.style.display = 'none';
+      status.textContent = data.message;
+      btn.disabled = false;
+      btn.textContent = 'סנכרון עכשיו';
+    }
+  } catch (err) {
+    progress.style.display = 'none';
+    status.textContent = 'שגיאה: ' + err.message;
+    btn.disabled = false;
+    btn.textContent = 'סנכרון עכשיו';
+  }
+}
+</script>
+
+<%- include('footer') %>

@@ -1,0 +1,20 @@
+<%- include('layout') %>
+
+<div class="auth-container">
+  <h1>X Campus Calendar Sync</h1>
+  <p class="auth-desc">סנכרון אוטומטי של המערכת שלך מ-X Campus ליומן גוגל.</p>
+  <h2>התחברות</h2>
+  <form method="POST" action="/login">
+    <label>אימייל
+      <input type="email" name="email" required autofocus placeholder="your@email.com">
+    </label>
+    <label>סיסמה
+      <input type="password" name="password" required placeholder="סיסמה לאפליקציה (לא של X Campus)">
+    </label>
+    <button type="submit">התחברות</button>
+  </form>
+  <p class="auth-note">זהו חשבון באפליקציה הזו, לא פרטי ההתחברות של X Campus.</p>
+  <p class="auth-link">אין לך חשבון? <a href="/register">הרשמה</a></p>
+</div>
+
+<%- include('footer') %>
