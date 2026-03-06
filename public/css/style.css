@@ -994,7 +994,7 @@ a:hover { text-decoration: underline; }
 
 .cal-wa-slide {
   position: absolute;
-  bottom: -100%;
+  bottom: -1.5rem;
   left: 0;
   right: 0;
   height: 1.5rem;
