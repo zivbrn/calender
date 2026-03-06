@@ -2,7 +2,7 @@ const STUDENTS_URL = 'https://x.psychometrix.co.il/adm/student/students-list.asp
 
 // Returns all courses that have at least one class, in order
 async function getCoursesWithClasses(page) {
-  await page.goto(STUDENTS_URL, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  await page.goto(STUDENTS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(2000);
 
   const courseOptions = await page.evaluate(() => {

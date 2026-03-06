@@ -6,7 +6,7 @@ async function scrapeSchedule(page, { throughMonth, throughYear } = {}) {
   const scheduleUrl = `${baseUrl}${SCHEDULE_PATH}`;
 
   console.log(`Navigating to schedule page: ${scheduleUrl}`);
-  await page.goto(scheduleUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+  await page.goto(scheduleUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(2000);
 
   const events = [];

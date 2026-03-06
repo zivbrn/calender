@@ -19,7 +19,7 @@ async function login({ username, password, headless = true }) {
   const page = await context.newPage();
 
   console.log('Navigating to Psychometrix login page...');
-  await page.goto(config.psychometrix.loginUrl, { waitUntil: 'domcontentloaded' });
+  await page.goto(config.psychometrix.loginUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
   // Fill credentials
   await page.fill('#_ctl0_page_content_txt_UserName', username);
@@ -58,7 +58,7 @@ async function login({ username, password, headless = true }) {
   }
 
   // Wait for the page to settle after form submission
-  await page.waitForLoadState('domcontentloaded', { timeout: 20000 });
+  await page.waitForLoadState('domcontentloaded', { timeout: 60000 });
   await page.waitForTimeout(2000);
 
   // Verify login by checking for authenticated content (user menu, logout link, etc.)
