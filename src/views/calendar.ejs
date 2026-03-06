@@ -47,15 +47,30 @@
 </div>
 
 <script>
+const isTouch = window.matchMedia('(hover: none)').matches;
+
 document.querySelectorAll('.cal-event-wa').forEach(el => {
-  let t;
-  el.addEventListener('mouseenter', () => {
-    t = setTimeout(() => el.classList.add('wa-open'), 600);
-  });
-  el.addEventListener('mouseleave', () => {
-    clearTimeout(t);
-    el.classList.remove('wa-open');
-  });
+  if (isTouch) {
+    el.addEventListener('click', (e) => {
+      const isOpen = el.classList.contains('wa-open');
+      document.querySelectorAll('.cal-event-wa.wa-open').forEach(o => o.classList.remove('wa-open'));
+      if (!isOpen) el.classList.add('wa-open');
+      e.stopPropagation();
+    });
+  } else {
+    let t;
+    el.addEventListener('mouseenter', () => {
+      t = setTimeout(() => el.classList.add('wa-open'), 600);
+    });
+    el.addEventListener('mouseleave', () => {
+      clearTimeout(t);
+      el.classList.remove('wa-open');
+    });
+  }
+});
+
+document.addEventListener('click', () => {
+  document.querySelectorAll('.cal-event-wa.wa-open').forEach(el => el.classList.remove('wa-open'));
 });
 </script>
 
