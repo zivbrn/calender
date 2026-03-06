@@ -96,7 +96,7 @@ async function processQueue() {
     browser = result.browser;
 
     const now = new Date();
-    const throughDate = new Date(now.getFullYear(), now.getMonth() + 6, 1);
+    const throughDate = new Date(now.getFullYear(), now.getMonth() + 2, 1);
     const events = await scrapeSchedule(result.page, {
       throughMonth: throughDate.getMonth() + 1,
       throughYear: throughDate.getFullYear(),
