@@ -18,13 +18,13 @@ async function scrapeSchedule(page, { throughMonth, throughYear } = {}) {
       // Click "next" to go to next month
       const nextBtn = page.locator('a').filter({ hasText: 'הבא>' }).first();
       if (await nextBtn.count() > 0) {
-        await nextBtn.click();
+        await nextBtn.click().catch(() => {});
         await page.waitForSelector('.ui-datepicker-calendar', { timeout: 5000 }).catch(() => {});
       }
       // Click on the 1st of the month to trigger page reload with that month's data
       const firstDayLink = page.locator('.ui-datepicker-calendar td a').filter({ hasText: /^1$/ }).first();
       if (await firstDayLink.count() > 0) {
-        await firstDayLink.click();
+        await firstDayLink.click({ timeout: 15000 }).catch(() => {});
         await page.waitForSelector('#list_of_private_lessons', { timeout: 5000 }).catch(() => {});
       }
     }
@@ -91,7 +91,12 @@ async function scrapeMonth(page, monthYear) {
     const dateLink = page.locator('.date-with-activities a').filter({ hasText: new RegExp(`^${dayStr}$`) }).first();
     if (await dateLink.count() === 0) continue;
 
-    await dateLink.click();
+    try {
+      await dateLink.click({ timeout: 15000 });
+    } catch (e) {
+      console.warn(`  Skipping day ${dayStr}: click failed — ${e.message.split('\n')[0]}`);
+      continue;
+    }
     await page.waitForSelector('#list_of_private_lessons', { timeout: 5000 }).catch(() => {});
 
     const day = parseInt(dayStr);
