@@ -3,7 +3,7 @@ const STUDENTS_URL = 'https://x.psychometrix.co.il/adm/student/students-list.asp
 // Returns all courses that have at least one class, in order
 async function getCoursesWithClasses(page) {
   await page.goto(STUDENTS_URL, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForTimeout(2000);
+  await page.waitForSelector('#_ctl0_page_content_drp_ExamDates', { timeout: 8000 }).catch(() => {});
 
   const courseOptions = await page.evaluate(() => {
     const sel = document.querySelector('#_ctl0_page_content_drp_ExamDates');
@@ -18,11 +18,8 @@ async function getCoursesWithClasses(page) {
   const coursesWithClasses = [];
 
   for (const course of courseOptions) {
-    await Promise.all([
-      page.waitForLoadState('networkidle'),
-      page.selectOption('#_ctl0_page_content_drp_ExamDates', course.value),
-    ]);
-    await page.waitForTimeout(1000);
+    await page.selectOption('#_ctl0_page_content_drp_ExamDates', course.value);
+    await page.waitForSelector('#_ctl0_page_content_drp_Classes', { timeout: 5000 }).catch(() => {});
 
     const classOptions = await page.evaluate(() => {
       const sel = document.querySelector('#_ctl0_page_content_drp_Classes');
@@ -45,25 +42,16 @@ async function getCoursesWithClasses(page) {
 
 async function scrapeContactsForCourse(page, course, classOptions) {
   // Select course (already selected, but ensure consistency)
-  await Promise.all([
-    page.waitForLoadState('networkidle'),
-    page.selectOption('#_ctl0_page_content_drp_ExamDates', course.value),
-  ]);
-  await page.waitForTimeout(1000);
+  await page.selectOption('#_ctl0_page_content_drp_ExamDates', course.value);
+  await page.waitForSelector('#_ctl0_page_content_drp_Classes', { timeout: 5000 }).catch(() => {});
 
   // Select first class
-  await Promise.all([
-    page.waitForLoadState('networkidle'),
-    page.selectOption('#_ctl0_page_content_drp_Classes', classOptions[0].value),
-  ]);
-  await page.waitForTimeout(1500);
+  await page.selectOption('#_ctl0_page_content_drp_Classes', classOptions[0].value);
+  await page.waitForSelector('#_ctl0_page_content_drp_top', { timeout: 5000 }).catch(() => {});
 
   // Set display count to 500
-  await Promise.all([
-    page.waitForLoadState('networkidle'),
-    page.selectOption('#_ctl0_page_content_drp_top', '500'),
-  ]);
-  await page.waitForTimeout(1500);
+  await page.selectOption('#_ctl0_page_content_drp_top', '500');
+  await page.waitForSelector('table tr td', { timeout: 5000 }).catch(() => {});
 
   const contacts = await page.evaluate(() => {
     const results = [];

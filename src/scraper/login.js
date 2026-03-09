@@ -13,6 +13,10 @@ async function login({ username, password, headless = true }) {
       '--disable-gpu',
       '--no-sandbox',
       '--disable-dev-shm-usage',
+      '--blink-settings=imagesEnabled=false',
+      '--disable-extensions',
+      '--disable-default-apps',
+      '--no-first-run',
     ],
   });
   const context = await browser.newContext();

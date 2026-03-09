@@ -7,7 +7,7 @@ async function scrapeSchedule(page, { throughMonth, throughYear } = {}) {
 
   console.log(`Navigating to schedule page: ${scheduleUrl}`);
   await page.goto(scheduleUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await page.waitForTimeout(2000);
+  await page.waitForSelector('.ui-datepicker-calendar', { timeout: 8000 }).catch(() => {});
 
   const events = [];
   const maxMonths = 6; // safety limit
@@ -19,13 +19,13 @@ async function scrapeSchedule(page, { throughMonth, throughYear } = {}) {
       const nextBtn = page.locator('a').filter({ hasText: 'הבא>' }).first();
       if (await nextBtn.count() > 0) {
         await nextBtn.click();
-        await page.waitForTimeout(1500);
+        await page.waitForSelector('.ui-datepicker-calendar', { timeout: 5000 }).catch(() => {});
       }
       // Click on the 1st of the month to trigger page reload with that month's data
       const firstDayLink = page.locator('.ui-datepicker-calendar td a').filter({ hasText: /^1$/ }).first();
       if (await firstDayLink.count() > 0) {
         await firstDayLink.click();
-        await page.waitForTimeout(2000);
+        await page.waitForSelector('#list_of_private_lessons', { timeout: 5000 }).catch(() => {});
       }
     }
 
@@ -92,7 +92,7 @@ async function scrapeMonth(page, monthYear) {
     if (await dateLink.count() === 0) continue;
 
     await dateLink.click();
-    await page.waitForTimeout(1500);
+    await page.waitForSelector('#list_of_private_lessons', { timeout: 5000 }).catch(() => {});
 
     const day = parseInt(dayStr);
     const dateISO = `${monthYear.year}-${String(monthYear.month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;

@@ -51,7 +51,7 @@ function cleanError(err) {
 
 const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_RETRIES = 2;
-const MIN_FREE_RAM_MB = 180; // minimum free RAM before launching Chromium
+const MIN_FREE_RAM_MB = 300; // minimum free RAM before launching Chromium
 
 function isRetryableError(err) {
   const msg = err.message || '';
