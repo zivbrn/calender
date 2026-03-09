@@ -168,9 +168,13 @@ function saveStudentContacts(userId, contacts, moed) {
     VALUES (?, ?, ?, ?, datetime('now'))
   `);
   const save = db.transaction((items) => {
-    // Clean up migration placeholder when a real moed name comes in
-    if (moedLabel !== 'נוכחי') {
-      db.prepare("DELETE FROM student_contacts WHERE user_id = ? AND moed = 'נוכחי'").run(userId);
+    // Always clean up migration placeholder
+    db.prepare("DELETE FROM student_contacts WHERE user_id = ? AND moed = 'נוכחי'").run(userId);
+    // If this is a new מועד not seen before, delete all old ones
+    const existing = db.prepare('SELECT DISTINCT moed FROM student_contacts WHERE user_id = ?').all(userId).map(r => r.moed);
+    if (moedLabel !== 'נוכחי' && !existing.includes(moedLabel)) {
+      db.prepare('DELETE FROM student_contacts WHERE user_id = ?').run(userId);
+      console.log(`[contacts] New מועד detected ("${moedLabel}") — cleared all previous contacts for user ${userId}.`);
     }
     for (const c of items) {
       insertStmt.run(userId, moedLabel, c.name, c.phone || null);
