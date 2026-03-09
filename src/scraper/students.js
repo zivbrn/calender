@@ -40,41 +40,57 @@ async function getCoursesWithClasses(page) {
   return coursesWithClasses;
 }
 
-async function scrapeContactsForCourse(page, course, classOptions) {
-  // Select course (already selected, but ensure consistency)
-  await page.selectOption('#_ctl0_page_content_drp_ExamDates', course.value);
-  await page.waitForSelector('#_ctl0_page_content_drp_Classes', { timeout: 5000 }).catch(() => {});
-
-  // Select first class
-  await page.selectOption('#_ctl0_page_content_drp_Classes', classOptions[0].value);
+async function scrapeContactsForClass(page, classValue) {
+  await page.selectOption('#_ctl0_page_content_drp_Classes', classValue);
   await page.waitForSelector('#_ctl0_page_content_drp_top', { timeout: 5000 }).catch(() => {});
 
-  // Set display count to 500
   await page.selectOption('#_ctl0_page_content_drp_top', '500');
   await page.waitForSelector('table tr td', { timeout: 5000 }).catch(() => {});
 
-  const contacts = await page.evaluate(() => {
+  return page.evaluate(() => {
     const results = [];
     const rows = document.querySelectorAll('table tr');
     for (const row of rows) {
       const cells = row.querySelectorAll('td');
-      if (cells.length < 4) continue;
+      if (cells.length < 3) continue;
       const nameLink = cells[2].querySelector('a');
       if (!nameLink) continue;
       const name = nameLink.innerText.trim().replace(/^\*\s*/, '');
       if (!name) continue;
-      const waLink = cells[3].querySelector('a[href*="api.whatsapp.com"]');
+      // Search all cells for a WhatsApp link (column position varies)
       let phone = null;
-      if (waLink) {
-        const match = waLink.href.match(/phone=(\d+)/);
-        if (match) phone = match[1];
+      for (const cell of cells) {
+        const waLink = cell.querySelector('a[href*="api.whatsapp.com"]');
+        if (waLink) {
+          const match = waLink.href.match(/phone=(\d+)/);
+          if (match) { phone = match[1]; break; }
+        }
       }
       results.push({ name, phone });
     }
     return results;
   });
+}
 
-  return contacts;
+async function scrapeContactsForCourse(page, course, classOptions) {
+  // Select course (already selected, but ensure consistency)
+  await page.selectOption('#_ctl0_page_content_drp_ExamDates', course.value);
+  await page.waitForSelector('#_ctl0_page_content_drp_Classes', { timeout: 5000 }).catch(() => {});
+
+  // Scrape all classes and merge — phones may only appear in one class
+  const contactMap = new Map();
+  for (const cls of classOptions) {
+    const rows = await scrapeContactsForClass(page, cls.value);
+    for (const { name, phone } of rows) {
+      const existing = contactMap.get(name);
+      // Keep entry if new one has a phone and old one doesn't
+      if (!existing || (!existing.phone && phone)) {
+        contactMap.set(name, { name, phone });
+      }
+    }
+  }
+
+  return [...contactMap.values()];
 }
 
 // Used during sync — scrapes current (first) active מועד
