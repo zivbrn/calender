@@ -13,6 +13,7 @@ module.exports = {
   port: parseInt(process.env.PORT, 10) || 3000,
   sessionSecret: process.env.SESSION_SECRET,
   encryptionKey: process.env.ENCRYPTION_KEY,
+  adminApiKey: process.env.ADMIN_API_KEY || '',
   inviteCode: process.env.INVITE_CODE || '',
   cronSchedule: process.env.CRON_SCHEDULE || '0 6 * * *',
   psychometrix: {

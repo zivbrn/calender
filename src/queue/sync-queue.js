@@ -1,3 +1,5 @@
+const { execSync } = require('child_process');
+const os = require('os');
 const { login } = require('../scraper/login');
 const { scrapeSchedule } = require('../scraper/schedule');
 const { scrapeStudents } = require('../scraper/students');
@@ -12,7 +14,6 @@ const {
   saveStudentContacts,
   getConnectedUsers,
   getNotificationSettings,
-  findUserById,
 } = require('../db/users');
 const { sendSyncNotification } = require('../email/notify');
 const { notifySyncResult } = require('../notify/desktop');
@@ -50,6 +51,7 @@ function cleanError(err) {
 
 const RETRY_DELAY_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_RETRIES = 2;
+const MIN_FREE_RAM_MB = 180; // minimum free RAM before launching Chromium
 
 function isRetryableError(err) {
   const msg = err.message || '';
@@ -57,9 +59,23 @@ function isRetryableError(err) {
     msg.includes('ECONNREFUSED') || msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT');
 }
 
+function killZombieChromium() {
+  try {
+    execSync('pkill -f chrome-headless-shell 2>/dev/null || true', { timeout: 5000, shell: true });
+  } catch (_) { /* ignore */ }
+}
+
+function checkMemory() {
+  const freeMb = Math.round(os.freemem() / 1024 / 1024);
+  if (freeMb < MIN_FREE_RAM_MB) {
+    throw new Error(`Not enough memory to launch browser: ${freeMb}MB free (need ${MIN_FREE_RAM_MB}MB). Will retry later.`);
+  }
+}
+
 // Simple serial queue — one browser at a time
 const queue = [];
 let running = false;
+let paused = false;
 
 // Track in-progress syncs by userId
 const activeUsers = new Set();
@@ -101,7 +117,9 @@ async function processQueue() {
       tag: creds.tag_password,
     });
 
-    // 2. Login + scrape
+    // 2. Kill any leftover Chromium processes, check memory, then launch
+    killZombieChromium();
+    checkMemory();
     const result = await login({ username, password, headless: true });
     browser = result.browser;
 
@@ -128,8 +146,10 @@ async function processQueue() {
     browser = null;
 
     if (events.length === 0) {
-      console.log('No events scraped — skipping Google Calendar sync.');
-      createSyncLog(userId, 'success', { inserted: 0, updated: 0, skipped: 0, deleted: 0 }, triggerType);
+      const msg = 'הסקריפר לא מצא אירועים — הסנכרון הופסק כדי למנוע מחיקה. בדוק שיש שיעורים ב-X Campus.';
+      console.warn(`[${new Date().toISOString()}] Sync warning for user ${userId}: scraper returned 0 events, skipping to avoid clearing calendar.`);
+      createSyncLog(userId, 'error', null, triggerType, msg);
+      await trySendNotification(userId, 'error', { error: msg, triggerType });
       return;
     }
 
@@ -180,6 +200,29 @@ function isUserSyncing(userId) {
   return activeUsers.has(userId);
 }
 
+function pauseAutoSync() {
+  paused = true;
+  console.log(`[${new Date().toISOString()}] Auto-sync paused.`);
+}
+
+function resumeAutoSync() {
+  paused = false;
+  console.log(`[${new Date().toISOString()}] Auto-sync resumed.`);
+}
+
+function isAutoSyncPaused() {
+  return paused;
+}
+
+function getQueueStatus() {
+  return {
+    queueLength: queue.length,
+    activeUsers: [...activeUsers],
+    running,
+    paused,
+  };
+}
+
 async function runSyncForAllUsers(triggerType = 'scheduled') {
   const users = getConnectedUsers();
   console.log(`Running scheduled sync for ${users.length} connected user(s).`);
@@ -188,4 +231,7 @@ async function runSyncForAllUsers(triggerType = 'scheduled') {
   }
 }
 
-module.exports = { enqueueSync, isUserSyncing, runSyncForAllUsers };
+module.exports = {
+  enqueueSync, isUserSyncing, runSyncForAllUsers,
+  pauseAutoSync, resumeAutoSync, isAutoSyncPaused, getQueueStatus,
+};

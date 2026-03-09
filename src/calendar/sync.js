@@ -62,8 +62,13 @@ async function syncEvents(scrapedEvents, { calendarClient, calendarId }) {
 
   // 3. Delete events that no longer exist in scraped data
   const toDelete = [...existingMap.entries()].filter(([syncId]) => !currentSyncIds.has(syncId));
-  if (toDelete.length > 5 && toDelete.length > existingMap.size * 0.4) {
-    throw new Error(`Safety check: aborting — would delete ${toDelete.length} of ${existingMap.size} future events. Scrape may be incomplete.`);
+
+  // Safety check: abort if we'd delete a suspicious proportion of the calendar.
+  // We scraped N events but the calendar has M — if too many would vanish, the scrape was likely incomplete.
+  if (existingMap.size > 0 && toDelete.length > 5 && toDelete.length > existingMap.size * 0.4) {
+    throw new Error(
+      `Safety check: aborting — scraped ${scrapedEvents.length} event(s) but would delete ${toDelete.length} of ${existingMap.size} existing future events (${Math.round(toDelete.length / existingMap.size * 100)}%). Scrape was likely incomplete.`
+    );
   }
   for (const [, ev] of toDelete) {
     await calendarClient.events.delete({ calendarId, eventId: ev.id });

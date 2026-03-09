@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
+    "control": "node control.js",
     "test-scrape": "node scripts/test-scrape.js",
     "google-auth": "node scripts/google-auth-setup.js"
   },

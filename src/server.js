@@ -2,7 +2,7 @@ const config = require('./config');
 const { initSchema } = require('./db/schema');
 const app = require('./app');
 const cron = require('node-cron');
-const { enqueueSync } = require('./queue/sync-queue');
+const { enqueueSync, isAutoSyncPaused } = require('./queue/sync-queue');
 const { getConnectedUsers } = require('./db/users');
 
 // Initialize database
@@ -44,6 +44,10 @@ cron.schedule('0 * * * *', () => {
     }
 
     if (shouldSync) {
+      if (isAutoSyncPaused()) {
+        console.log(`[${now.toISOString()}] Auto-sync is paused — skipping scheduled sync for user ${user.id}.`);
+        continue;
+      }
       console.log(`[${now.toISOString()}] Scheduled sync for user ${user.id} (${user.sync_schedule})`);
       enqueueSync(user.id, 'scheduled');
     }

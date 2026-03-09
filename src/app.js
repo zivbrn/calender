@@ -44,5 +44,6 @@ app.use('/', require('./routes/settings'));
 app.use('/', require('./routes/students'));
 app.use('/auth/google', require('./routes/google'));
 app.use('/api', require('./routes/api'));
+app.use('/admin', require('./routes/admin'));
 
 module.exports = app;
