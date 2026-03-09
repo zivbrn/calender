@@ -11,6 +11,7 @@ async function scrapeSchedule(page, { throughMonth, throughYear } = {}) {
 
   const events = [];
   const maxMonths = 6; // safety limit
+  let lastMonthYear = null;
 
   for (let i = 0; i < maxMonths; i++) {
     if (i > 0) {
@@ -45,6 +46,13 @@ async function scrapeSchedule(page, { throughMonth, throughYear } = {}) {
       console.log('Could not determine current month/year, skipping...');
       continue;
     }
+
+    // Guard: if month didn't advance, navigation failed — stop to avoid duplicate scrape
+    if (lastMonthYear && monthYear.month === lastMonthYear.month && monthYear.year === lastMonthYear.year) {
+      console.warn(`Month navigation failed — still on ${monthYear.month}/${monthYear.year}, stopping early.`);
+      break;
+    }
+    lastMonthYear = monthYear;
 
     console.log(`Scanning ${monthYear.month}/${monthYear.year}...`);
 
