@@ -7,22 +7,38 @@ async function syncEvents(scrapedEvents, { calendarClient, calendarId }) {
   const existingEvents = await fetchSyncedEvents(calendarClient, calendarId);
   console.log(`Found ${existingEvents.length} existing synced event(s) in Google Calendar.`);
 
-  // Build lookup by syncId, deleting any duplicates found
-  const existingMap = new Map();
+  // Build lookup by syncId, and a fallback lookup by startTime+title
+  // Fallback catches cases where X Campus changed element IDs between syncs
+  const existingMap = new Map();        // syncId → event
+  const existingByTimeTitle = new Map(); // `${startMs}|${title}` → event
   let inserted = 0, updated = 0, skipped = 0, deleted = 0;
 
   for (const ev of existingEvents) {
     if (ev.status === 'cancelled') continue;
     const syncId = ev.extendedProperties?.private?.syncId;
-    if (!syncId) continue;
-    if (existingMap.has(syncId)) {
-      // Duplicate entry — clean it up
+
+    const startDt = ev.start?.dateTime || ev.start?.date || '';
+    const startMs = startDt ? new Date(startDt).getTime() : 0;
+    const timeKey = startMs ? `${startMs}|${ev.summary}` : null;
+
+    // Delete duplicates by syncId
+    if (syncId && existingMap.has(syncId)) {
       await calendarClient.events.delete({ calendarId, eventId: ev.id });
       deleted++;
-      console.log(`  Cleaned up duplicate: ${ev.summary}`);
-    } else {
-      existingMap.set(syncId, ev);
+      console.log(`  Cleaned up duplicate (syncId): ${ev.summary}`);
+      continue;
     }
+
+    // Delete duplicates by time+title (catches stale events with different syncIds)
+    if (timeKey && existingByTimeTitle.has(timeKey)) {
+      await calendarClient.events.delete({ calendarId, eventId: ev.id });
+      deleted++;
+      console.log(`  Cleaned up duplicate (time+title): ${ev.summary}`);
+      continue;
+    }
+
+    if (syncId) existingMap.set(syncId, ev);
+    if (timeKey) existingByTimeTitle.set(timeKey, ev);
   }
 
   // 2. Build a set of current scraped syncIds
@@ -33,7 +49,13 @@ async function syncEvents(scrapedEvents, { calendarClient, calendarId }) {
     const syncId = event.id;
     currentSyncIds.add(syncId);
 
-    const existing = existingMap.get(syncId);
+    // Look up by syncId first, then fall back to time+title
+    let existing = syncId ? existingMap.get(syncId) : null;
+    if (!existing) {
+      const startMs = event.startTime ? new Date(event.startTime).getTime() : 0;
+      const timeKey = startMs ? `${startMs}|${event.title}` : null;
+      if (timeKey) existing = existingByTimeTitle.get(timeKey);
+    }
 
     if (existing) {
       const existingHash = existing.extendedProperties?.private?.contentHash;
@@ -61,10 +83,20 @@ async function syncEvents(scrapedEvents, { calendarClient, calendarId }) {
   }
 
   // 3. Delete events that no longer exist in scraped data
-  const toDelete = [...existingMap.entries()].filter(([syncId]) => !currentSyncIds.has(syncId));
+  // Check both by syncId and by time+title to avoid false deletions
+  const toDelete = [...existingMap.entries()].filter(([syncId, ev]) => {
+    if (currentSyncIds.has(syncId)) return false;
+    // Fallback: keep if any scraped event matches by time+title
+    const startDt = ev.start?.dateTime || ev.start?.date || '';
+    const startMs = startDt ? new Date(startDt).getTime() : 0;
+    const matchedByTime = scrapedEvents.some(e => {
+      const eMs = e.startTime ? new Date(e.startTime).getTime() : 0;
+      return eMs === startMs && e.title === ev.summary;
+    });
+    return !matchedByTime;
+  });
 
   // Safety check: abort if we'd delete a suspicious proportion of the calendar.
-  // We scraped N events but the calendar has M — if too many would vanish, the scrape was likely incomplete.
   if (existingMap.size > 0 && toDelete.length > 5 && toDelete.length > existingMap.size * 0.4) {
     throw new Error(
       `Safety check: aborting — scraped ${scrapedEvents.length} event(s) but would delete ${toDelete.length} of ${existingMap.size} existing future events (${Math.round(toDelete.length / existingMap.size * 100)}%). Scrape was likely incomplete.`
@@ -92,7 +124,7 @@ async function fetchSyncedEvents(calendarClient, calendarId) {
   do {
     const res = await calendarClient.events.list({
       calendarId,
-      privateExtendedProperty: `syncSource=${SYNC_SOURCE}`,
+      privateExtendedProperty: [`syncSource=${SYNC_SOURCE}`],
       maxResults: 250,
       singleEvents: true,
       timeMin: timeMin.toISOString(),
