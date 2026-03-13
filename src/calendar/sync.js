@@ -84,6 +84,8 @@ async function syncEvents(scrapedEvents, { calendarClient, calendarId }) {
 
   // 3. Delete events that no longer exist in scraped data
   // Check both by syncId and by time+title to avoid false deletions
+  // Never delete past events — they may have been manually added or left from old syncs
+  const now = new Date();
   const toDelete = [...existingMap.entries()].filter(([syncId, ev]) => {
     if (currentSyncIds.has(syncId)) return false;
     // Fallback: keep if any scraped event matches by time+title
@@ -93,7 +95,12 @@ async function syncEvents(scrapedEvents, { calendarClient, calendarId }) {
       const eMs = e.startTime ? new Date(e.startTime).getTime() : 0;
       return eMs === startMs && e.title === ev.summary;
     });
-    return !matchedByTime;
+    if (matchedByTime) return false;
+    // Skip deletion of past events (before today at 00:00)
+    const eventEnd = new Date(startDt);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (eventEnd < todayStart) return false;
+    return true;
   });
 
   // Safety check: abort if we'd delete a suspicious proportion of the calendar.
@@ -117,17 +124,13 @@ async function fetchSyncedEvents(calendarClient, calendarId) {
   const events = [];
   let pageToken;
 
-  // Only fetch events from today onwards — never delete past events
-  const timeMin = new Date();
-  timeMin.setHours(0, 0, 0, 0);
-
+  // Fetch all events for deduplication matching, but protect past events from deletion
   do {
     const res = await calendarClient.events.list({
       calendarId,
       privateExtendedProperty: [`syncSource=${SYNC_SOURCE}`],
       maxResults: 250,
       singleEvents: true,
-      timeMin: timeMin.toISOString(),
       pageToken,
     });
     if (res.data.items) events.push(...res.data.items);
