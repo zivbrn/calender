@@ -104,9 +104,10 @@ async function syncEvents(scrapedEvents, { calendarClient, calendarId }) {
   });
 
   // Safety check: abort if we'd delete a suspicious proportion of the calendar.
-  if (existingMap.size > 0 && toDelete.length > 5 && toDelete.length > existingMap.size * 0.4) {
+  // Use existingEvents.length (before duplicates) not existingMap.size (after), so check is effective
+  if (existingEvents.length > 0 && toDelete.length > 5 && toDelete.length > existingEvents.length * 0.4) {
     throw new Error(
-      `Safety check: aborting — scraped ${scrapedEvents.length} event(s) but would delete ${toDelete.length} of ${existingMap.size} existing future events (${Math.round(toDelete.length / existingMap.size * 100)}%). Scrape was likely incomplete.`
+      `Safety check: aborting — scraped ${scrapedEvents.length} event(s) but would delete ${toDelete.length} of ${existingEvents.length} existing synced events (${Math.round(toDelete.length / existingEvents.length * 100)}%). Scrape was likely incomplete.`
     );
   }
   for (const [, ev] of toDelete) {
