@@ -125,10 +125,18 @@ async function processQueue() {
 
     const now = new Date();
     const throughDate = new Date(now.getFullYear(), now.getMonth() + 2, 1);
-    const events = await scrapeSchedule(result.page, {
+    const allEvents = await scrapeSchedule(result.page, {
       throughMonth: throughDate.getMonth() + 1,
       throughYear: throughDate.getFullYear(),
     });
+
+    // Filter out past events — fetchSyncedEvents uses timeMin=today, so past events
+    // are never found and would be re-inserted as duplicates on every sync.
+    const todayStr = now.toISOString().split('T')[0]; // 'YYYY-MM-DD'
+    const events = allEvents.filter(e => !e.startTime || e.startTime >= todayStr);
+    if (allEvents.length !== events.length) {
+      console.log(`Filtered ${allEvents.length - events.length} past event(s) from sync (keeping ${events.length} from today onwards).`);
+    }
 
     // Scrape student contacts (same browser session)
     try {
